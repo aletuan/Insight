@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Insight — Options</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 400px; margin: 40px auto; padding: 0 20px; }
+    label { display: block; margin-top: 16px; font-weight: 600; font-size: 14px; }
+    input { width: 100%; padding: 8px; margin-top: 4px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; box-sizing: border-box; }
+    button { margin-top: 20px; padding: 8px 20px; background: #111; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; }
+    #status { margin-top: 12px; color: #16a34a; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <h2>Insight Settings</h2>
+
+  <label for="apiUrl">API URL</label>
+  <input type="text" id="apiUrl" placeholder="http://localhost:8000" />
+
+  <label for="apiKey">API Key</label>
+  <input type="text" id="apiKey" placeholder="your-api-key" />
+
+  <button id="save">Save</button>
+  <div id="status"></div>
+
+  <script src="options.js"></script>
+</body>
+</html>
