@@ -50,6 +50,7 @@ Capture Sources (Chrome Ext, iOS Shortcut, YouTube Cron, Bookmark Import)
 | Backend API | Python + FastAPI + uvicorn |
 | Database | PostgreSQL + pgvector |
 | ORM | SQLAlchemy |
+| Migrations | Alembic |
 | Validation | Pydantic |
 | Task scheduling | APScheduler (in-process) |
 | Background tasks | asyncio (in-process) |
@@ -78,7 +79,8 @@ Capture Sources (Chrome Ext, iOS Shortcut, YouTube Cron, Bookmark Import)
 | summary | TEXT | AI-generated 3-4 sentence summary |
 | tags | TEXT[] | AI-extracted topic tags |
 | embedding | VECTOR(1536) | text-embedding-3-small vector |
-| cluster_id | INT | FK to clusters (updated nightly) |
+| status | ENUM | pending, enriching, enriched, failed |
+| cluster_id | INT | FK to clusters (ON DELETE SET NULL, updated nightly) |
 | created_at | TIMESTAMP | When item was saved |
 | processed_at | TIMESTAMP | When AI enrichment completed |
 
@@ -109,11 +111,25 @@ Capture Sources (Chrome Ext, iOS Shortcut, YouTube Cron, Bookmark Import)
 | digest_id | INT | FK to digests |
 | item_id | UUID | FK to items |
 
+### Item Lifecycle
+
+```
+pending → enriching → enriched → failed
+```
+
+- `pending`: item saved, awaiting enrichment
+- `enriching`: content fetch + AI calls in progress
+- `enriched`: summary, tags, and embedding all populated
+- `failed`: enrichment failed after retries (content extraction or API error)
+
+On startup, the app sweeps for items stuck in `enriching` (process crash) or `failed` and re-queues them.
+
 ### Key Constraints
 
 - **Deduplication**: unique constraint on `items.url`, upsert on conflict (update title/timestamp if re-saved)
-- **Clusters are ephemeral**: rebuilt from scratch every night, old rows replaced
+- **Clusters are ephemeral**: rebuilt from scratch every night. `items.cluster_id` uses `ON DELETE SET NULL` — old clusters are deleted, then new ones inserted and items reassigned
 - **Digests are immutable**: once generated, never modified — historical record preserved
+- **Schema migrations**: managed via Alembic. Each build phase may add columns or tables
 
 ## API Endpoints
 
@@ -128,6 +144,52 @@ Capture Sources (Chrome Ext, iOS Shortcut, YouTube Cron, Bookmark Import)
 
 Auth: simple static API key in env var, sent as header by capture sources. No auth on read endpoints (localhost only).
 
+### Digest JSONB Schema
+
+The `digests.content` column stores this structure:
+
+```json
+{
+  "clusters": [
+    {
+      "label": "AI & LLMs",
+      "insight": "You've been tracking the convergence of...",
+      "items": [
+        {
+          "id": "uuid",
+          "title": "...",
+          "url": "...",
+          "source": "chrome",
+          "summary": "..."
+        }
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "between": ["AI & LLMs", "DevOps & Infrastructure"],
+      "insight": "The AI agent trend and platform engineering..."
+    }
+  ],
+  "meta": {
+    "item_count": 12,
+    "cluster_count": 4,
+    "estimated_read_minutes": 8
+  }
+}
+```
+
+Estimated read time: calculated as `total_words_in_insights / 200 + item_count * 0.25` (minutes).
+
+### Semantic Search
+
+`GET /api/items?q=<query>` performs vector similarity search:
+
+1. Embed the query string via OpenAI text-embedding-3-small
+2. Run pgvector cosine similarity: `ORDER BY embedding <=> query_embedding LIMIT 20`
+3. No similarity threshold — return top 20 ranked results
+4. If embedding call fails, fall back to PostgreSQL full-text search on `title || summary`
+
 ## AI Pipeline
 
 ### Stage 1 — Enrichment (on ingest, async)
@@ -137,8 +199,11 @@ Item saved → fetch full page content (trafilatura) → Claude Haiku → OpenAI
 ```
 
 - Triggered immediately via asyncio background task when an item is ingested
+- Item status set to `enriching` during processing
+- Content extraction via trafilatura; if extraction fails or returns empty, fall back to title-only (item still gets embedded, marked with a `content_failed` flag in tags)
 - Haiku generates: 3-4 sentence summary + topic tags (single prompt, structured JSON response)
 - OpenAI embeds the concatenation of `title + summary` (not raw content — cleaner semantic signal)
+- On failure (API error, rate limit): retry up to 3 times with exponential backoff, then mark item as `failed`
 - Target latency: under 5 minutes per item
 
 ### Stage 2 — Clustering (nightly cron, 3:00 AM)
@@ -148,9 +213,11 @@ Load all embeddings → K-means (k=3 to 7) → silhouette scoring → assign clu
 ```
 
 - APScheduler runs at 3:00 AM
+- Only clusters items from the last 30 days (keeps clusters relevant, avoids degradation as corpus grows)
+- Minimum 10 enriched items required to run; below that threshold, skip clustering
 - Tests k=3,4,5,6,7 via silhouette scoring, picks best fit
 - After clustering, Haiku generates a short label for each cluster from item titles/summaries
-- Replaces previous cluster assignments entirely
+- Replaces previous cluster assignments entirely (old cluster rows deleted via CASCADE, items.cluster_id set to NULL, then reassigned)
 
 ### Stage 3 — Digest generation (daily cron, 7:00 AM)
 
@@ -159,6 +226,7 @@ Fetch items since last digest, grouped by cluster → Claude Sonnet → structur
 ```
 
 - Configurable time (default 7:00 AM)
+- "Items since last digest" = items not yet in any `digest_items` row AND with status `enriched`. This avoids missing items that were still enriching when the previous digest ran
 - Sonnet receives all items per cluster and generates:
   - Insight paragraph (3-5 sentences) per cluster — synthesizes, doesn't just list
   - Cross-cluster connections when detected
@@ -249,6 +317,9 @@ insight/
 │   │   │   ├── clustering.py    # K-means + silhouette
 │   │   │   └── digest.py        # Sonnet digest generation
 │   │   └── scheduler.py         # APScheduler config
+│   ├── alembic/                 # DB migrations
+│   │   └── versions/
+│   ├── alembic.ini
 │   ├── scripts/
 │   │   └── import_bookmarks.py  # Chrome HTML bookmark importer
 │   ├── requirements.txt
