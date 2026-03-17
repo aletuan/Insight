@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.database import get_session
 from app.models import Item, SourceType
-from app.schemas import ItemCreate, ItemRead
+from app.schemas import ItemCreate, ItemList, ItemRead
 
 router = APIRouter(prefix="/api/items", tags=["items"])
 
@@ -56,3 +56,35 @@ async def create_item(
         content=ItemRead.model_validate(db_item).model_dump(mode="json"),
         status_code=status_code,
     )
+
+
+@router.get("", response_model=ItemList)
+async def list_items(
+    source: Optional[str] = None,
+    q: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0,
+    session: AsyncSession = Depends(get_session),
+):
+    from sqlalchemy import func as sqlfunc
+
+    query = select(Item).order_by(Item.created_at.desc())
+
+    if source:
+        query = query.where(Item.source == SourceType(source))
+
+    # Semantic search (q=) will be upgraded to vector search in Phase 3
+    if q:
+        query = query.where(
+            Item.title.ilike(f"%{q}%") | Item.summary.ilike(f"%{q}%")
+        )
+
+    count_query = select(sqlfunc.count()).select_from(query.subquery())
+    total_result = await session.execute(count_query)
+    total = total_result.scalar()
+
+    query = query.limit(limit).offset(offset)
+    result = await session.execute(query)
+    items = result.scalars().all()
+
+    return ItemList(items=[ItemRead.model_validate(i) for i in items], total=total)
