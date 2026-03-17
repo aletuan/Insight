@@ -11,6 +11,12 @@ from app.schemas import DigestRead
 router = APIRouter(prefix="/api/digest", tags=["digest"])
 
 
+def get_digest_session_factory():
+    """Return the session factory for digest generation. Override in tests."""
+    from app.database import async_session
+    return async_session
+
+
 @router.get("/today", response_model=DigestRead)
 async def get_today_digest(session: AsyncSession = Depends(get_session)):
     today = date.today()
@@ -35,3 +41,14 @@ async def get_digest_by_date(digest_date: date, session: AsyncSession = Depends(
     if not digest:
         raise HTTPException(status_code=404, detail=f"No digest for {digest_date}")
     return digest
+
+
+@router.post("/generate")
+async def generate_digest(factory=Depends(get_digest_session_factory)):
+    """Manually trigger digest generation."""
+    from app.services.digest import run_digest_generation
+
+    result = await run_digest_generation(session_factory=factory)
+    if result is None:
+        return {"status": "skipped", "message": "No new items to include in digest."}
+    return result
