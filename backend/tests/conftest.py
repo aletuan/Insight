@@ -15,9 +15,34 @@ _base = settings.database_url.rsplit("/", 1)[0]
 TEST_DATABASE_URL = f"{_base}/insight_test"
 
 
+# Module-level session factory — engine is created once at import time.
+# Tests that use setup_db + TestSession share this engine.
+_engine = create_async_engine(TEST_DATABASE_URL, echo=False)
+TestSession = async_sessionmaker(_engine, class_=AsyncSession, expire_on_commit=False)
+
+
 @pytest.fixture(scope="session")
 def anyio_backend():
     return "asyncio"
+
+
+@pytest_asyncio.fixture
+async def setup_db():
+    """Create all tables before test, drop after. Uses a fresh engine per test."""
+    engine = create_async_engine(TEST_DATABASE_URL, echo=False)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    # Rebind TestSession to this engine for the test
+    global _engine
+    old_engine = _engine
+    _engine = engine
+    TestSession.configure(bind=engine)
+    yield
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+    await engine.dispose()
+    _engine = old_engine
+    TestSession.configure(bind=old_engine)
 
 
 @pytest_asyncio.fixture
