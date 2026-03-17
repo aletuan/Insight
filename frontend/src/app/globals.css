@@ -1,0 +1,46 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-size: 17px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-surface text-ink font-sans leading-relaxed;
+  }
+
+  h1, h2, h3 {
+    @apply font-serif font-semibold tracking-tight;
+  }
+
+  h1 {
+    @apply text-3xl leading-tight;
+  }
+
+  h2 {
+    @apply text-xl leading-snug;
+  }
+
+  a {
+    @apply text-accent hover:text-accent-hover transition-colors duration-150;
+  }
+
+  .prose-insight {
+    @apply font-serif text-base leading-relaxed text-ink;
+  }
+
+  .source-badge {
+    @apply font-mono text-[10px] uppercase tracking-widest text-ink-faint select-none;
+  }
+
+  .input-underline {
+    @apply w-full bg-transparent border-0 border-b border-ink-faint
+           focus:border-ink focus:outline-none focus:ring-0
+           font-sans text-lg py-2 transition-colors duration-200
+           placeholder:text-ink-faint;
+  }
+}
