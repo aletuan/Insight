@@ -74,12 +74,16 @@ async def generate_cluster_labels(cluster_titles: list[list[str]]) -> list[str]:
     )
 
     response = await anthropic_client.messages.create(
-        model="claude-3-5-haiku-latest",
+        model="claude-haiku-4-5-20251001",
         max_tokens=256,
         messages=[{"role": "user", "content": prompt}],
     )
 
-    labels = json.loads(response.content[0].text)
+    raw_text = response.content[0].text.strip()
+    if raw_text.startswith("```"):
+        raw_text = raw_text.split("\n", 1)[1] if "\n" in raw_text else raw_text
+        raw_text = raw_text.rsplit("```", 1)[0].strip()
+    labels = json.loads(raw_text)
     return labels
 
 

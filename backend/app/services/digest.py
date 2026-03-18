@@ -116,7 +116,11 @@ async def run_digest_generation(
             messages=[{"role": "user", "content": prompt}],
         )
 
-        digest_data = json.loads(response.content[0].text)
+        raw_text = response.content[0].text.strip()
+        if raw_text.startswith("```"):
+            raw_text = raw_text.split("\n", 1)[1] if "\n" in raw_text else raw_text
+            raw_text = raw_text.rsplit("```", 1)[0].strip()
+        digest_data = json.loads(raw_text)
 
         # Enrich digest_data with item details per cluster
         enriched_clusters = []

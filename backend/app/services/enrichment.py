@@ -49,12 +49,17 @@ async def summarize_content(title: str, content: str | None) -> tuple[str, list[
     try:
         client = get_anthropic_client()
         message = await client.messages.create(
-            model="claude-haiku-4-20250414",
+            model="claude-haiku-4-5-20251001",
             max_tokens=512,
             system=SUMMARIZE_SYSTEM_PROMPT,
             messages=[{"role": "user", "content": user_message}],
         )
-        raw_text = message.content[0].text
+        raw_text = message.content[0].text.strip()
+        logger.debug(f"Haiku raw response: {raw_text[:200]}")
+        # Strip markdown fences if present
+        if raw_text.startswith("```"):
+            raw_text = raw_text.split("\n", 1)[1] if "\n" in raw_text else raw_text
+            raw_text = raw_text.rsplit("```", 1)[0].strip()
         parsed = json.loads(raw_text)
 
         summary = parsed.get("summary", "")
