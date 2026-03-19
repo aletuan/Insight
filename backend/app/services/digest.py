@@ -74,8 +74,9 @@ async def run_digest_generation(
                 clustered[key] = []
             clustered[key].append(item)
 
-        # Load cluster labels
+        # Load cluster labels (EN and VI)
         cluster_labels: dict[int, str] = {}
+        cluster_labels_vi: dict[int, str] = {}
         if any(k is not None for k in clustered.keys()):
             cluster_ids = [k for k in clustered.keys() if k is not None]
             clusters_result = await session.execute(
@@ -83,6 +84,7 @@ async def run_digest_generation(
             )
             for cluster in clusters_result.scalars().all():
                 cluster_labels[cluster.id] = cluster.label
+                cluster_labels_vi[cluster.id] = cluster.label_vi or cluster.label
 
         # Build prompt for Sonnet
         prompt_sections = []
@@ -103,10 +105,11 @@ async def run_digest_generation(
             "(3-5 sentences) that SYNTHESIZES the items — do not just list them. Identify "
             "patterns, emerging interests, and connections.\n\n"
             "Also identify any cross-cluster connections: themes that bridge two or more clusters.\n\n"
+            "IMPORTANT: Provide all insights in BOTH English and Vietnamese.\n\n"
             + "\n\n".join(prompt_sections)
             + "\n\nReturn your response as JSON with this exact structure:\n"
-            '{"clusters": [{"label": "cluster name", "insight": "3-5 sentence synthesis"}], '
-            '"connections": [{"between": ["Cluster A", "Cluster B"], "insight": "connection description"}]}\n\n'
+            '{"clusters": [{"label": "cluster name", "label_vi": "tên cụm", "insight": "3-5 sentence synthesis in English", "insight_vi": "3-5 câu tổng hợp bằng tiếng Việt"}], '
+            '"connections": [{"between": ["Cluster A", "Cluster B"], "insight": "connection description in English", "insight_vi": "mô tả kết nối bằng tiếng Việt"}]}\n\n'
             "Return ONLY valid JSON, no other text."
         )
 
@@ -128,6 +131,8 @@ async def run_digest_generation(
         for cluster_entry in digest_data.get("clusters", []):
             label = cluster_entry["label"]
             insight = cluster_entry["insight"]
+            label_vi = cluster_entry.get("label_vi", "")
+            insight_vi = cluster_entry.get("insight_vi", "")
             total_insight_words += len(insight.split())
 
             # Find matching cluster_id for this label
@@ -144,7 +149,9 @@ async def run_digest_generation(
 
             enriched_clusters.append({
                 "label": label,
+                "label_vi": label_vi,
                 "insight": insight,
+                "insight_vi": insight_vi,
                 "items": [
                     {
                         "id": str(item.id),
@@ -152,6 +159,7 @@ async def run_digest_generation(
                         "url": item.url,
                         "source": item.source.value,
                         "summary": item.summary,
+                        "summary_vi": item.summary_vi,
                     }
                     for item in cluster_items_list
                 ],

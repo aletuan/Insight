@@ -13,10 +13,12 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-SUMMARIZE_SYSTEM_PROMPT = """You are a concise research assistant. Given an article title and optionally its full text, produce a JSON object with exactly two keys:
+SUMMARIZE_SYSTEM_PROMPT = """You are a concise research assistant. Given an article title and optionally its full text, produce a JSON object with exactly four keys:
 
-- "summary": A 3-4 sentence summary of the content. Focus on the key ideas and why they matter. If only a title is provided (no content), write a brief 1-2 sentence description based on the title alone.
-- "tags": An array of 2-5 lowercase topic tags (e.g. "machine-learning", "web-development", "startup-strategy"). Use hyphens for multi-word tags.
+- "summary_en": A 3-4 sentence summary in English. Focus on the key ideas and why they matter. If only a title is provided (no content), write a brief 1-2 sentence description based on the title alone.
+- "summary_vi": The same summary translated into Vietnamese.
+- "tags_en": An array of 2-5 lowercase topic tags in English (e.g. "machine-learning", "web-development", "startup-strategy"). Use hyphens for multi-word tags.
+- "tags_vi": The same tags translated into Vietnamese (e.g. "học-máy", "phát-triển-web", "chiến-lược-khởi-nghiệp").
 
 Respond with ONLY valid JSON, no markdown fences or extra text."""
 
@@ -31,15 +33,15 @@ def get_openai_client():
     return openai.AsyncOpenAI(api_key=settings.openai_api_key)
 
 
-async def summarize_content(title: str, content: str | None) -> tuple[str, list[str]] | None:
-    """Generate a summary and topic tags using Claude Haiku.
+async def summarize_content(title: str, content: str | None) -> tuple[str, str, list[str], list[str]] | None:
+    """Generate bilingual summaries and topic tags using Claude Haiku.
 
     Args:
         title: The item title.
         content: The extracted article text, or None if extraction failed.
 
     Returns:
-        Tuple of (summary, tags) on success, or None on failure.
+        Tuple of (summary_en, summary_vi, tags_en, tags_vi) on success, or None on failure.
     """
     if content:
         user_message = f"Title: {title}\n\nContent:\n{content[:8000]}"
@@ -62,14 +64,16 @@ async def summarize_content(title: str, content: str | None) -> tuple[str, list[
             raw_text = raw_text.rsplit("```", 1)[0].strip()
         parsed = json.loads(raw_text)
 
-        summary = parsed.get("summary", "")
-        tags = parsed.get("tags", [])
+        summary_en = parsed.get("summary_en", "")
+        summary_vi = parsed.get("summary_vi", "")
+        tags_en = parsed.get("tags_en", [])
+        tags_vi = parsed.get("tags_vi", [])
 
-        if not summary:
+        if not summary_en:
             logger.warning("Haiku returned empty summary")
             return None
 
-        return summary, tags
+        return summary_en, summary_vi, tags_en, tags_vi
 
     except json.JSONDecodeError as e:
         logger.warning(f"Failed to parse Haiku JSON response: {e}")

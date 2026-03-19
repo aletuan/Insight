@@ -44,7 +44,9 @@ class Item(Base):
     source = Column(Enum(SourceType), nullable=False)
     raw_content = Column(Text, nullable=True)
     summary = Column(Text, nullable=True)
+    summary_vi = Column(Text, nullable=True)
     tags = Column(ARRAY(String), nullable=True)
+    tags_vi = Column(ARRAY(String), nullable=True)
     embedding = Column(Vector(1536), nullable=True)
     status = Column(Enum(ItemStatus), nullable=False, default=ItemStatus.pending)
     cluster_id = Column(Integer, ForeignKey("clusters.id", ondelete="SET NULL"), nullable=True)
@@ -59,6 +61,7 @@ class Cluster(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     label = Column(Text, nullable=False)
+    label_vi = Column(Text, nullable=True)
     centroid = Column(Vector(1536), nullable=True)
     item_count = Column(Integer, nullable=False, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

@@ -8,7 +8,9 @@ export interface Item {
   status: string;
   created_at: string;
   summary: string | null;
+  summary_vi?: string | null;
   tags: string[] | null;
+  tags_vi?: string[] | null;
   cluster_id: number | null;
   processed_at: string | null;
 }
@@ -24,17 +26,21 @@ export interface DigestClusterItem {
   url: string;
   source: Source;
   summary: string;
+  summary_vi?: string;
 }
 
 export interface DigestCluster {
   label: string;
+  label_vi?: string;
   insight: string;
+  insight_vi?: string;
   items: DigestClusterItem[];
 }
 
 export interface DigestConnection {
   between: [string, string];
   insight: string;
+  insight_vi?: string;
 }
 
 export interface DigestMeta {
@@ -60,6 +66,7 @@ export interface Digest {
 export interface Cluster {
   id: number;
   label: string;
+  label_vi?: string;
   item_count: number;
   created_at: string;
 }

@@ -30,7 +30,9 @@ class ItemRead(BaseModel):
     status: str
     created_at: datetime
     summary: Optional[str] = None
+    summary_vi: Optional[str] = None
     tags: Optional[list[str]] = None
+    tags_vi: Optional[list[str]] = None
     cluster_id: Optional[int] = None
     processed_at: Optional[datetime] = None
 
@@ -55,6 +57,7 @@ class DigestRead(BaseModel):
 class ClusterRead(BaseModel):
     id: int
     label: str
+    label_vi: Optional[str] = None
     item_count: int
     created_at: datetime
 

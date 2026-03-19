@@ -2,15 +2,19 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useI18n } from "@/lib/i18n";
+import LanguageSwitcher from "./LanguageSwitcher";
+import type { TranslationKeys } from "@/lib/i18n";
 
-const navItems = [
-  { href: "/digest/today", label: "Digest" },
-  { href: "/search", label: "Search" },
-  { href: "/timeline", label: "Timeline" },
+const navItems: { href: string; labelKey: TranslationKeys }[] = [
+  { href: "/digest/today", labelKey: "navDigest" },
+  { href: "/search", labelKey: "navSearch" },
+  { href: "/timeline", labelKey: "navTimeline" },
 ];
 
 export default function Nav() {
   const pathname = usePathname();
+  const { t } = useI18n();
 
   const isActive = (href: string) => {
     if (href === "/digest/today") {
@@ -26,9 +30,9 @@ export default function Nav() {
           href="/digest/today"
           className="font-serif text-lg font-semibold text-ink no-underline hover:text-ink"
         >
-          Insight
+          {t("appName")}
         </Link>
-        <div className="flex gap-6">
+        <div className="flex items-center gap-6">
           {navItems.map((item) => (
             <Link
               key={item.href}
@@ -39,9 +43,10 @@ export default function Nav() {
                   : "text-ink-faint hover:text-ink-light"
               }`}
             >
-              {item.label}
+              {t(item.labelKey)}
             </Link>
           ))}
+          <LanguageSwitcher />
         </div>
       </div>
     </nav>

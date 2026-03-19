@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { searchItems } from "@/lib/api";
 import type { Item } from "@/lib/types";
+import { useI18n } from "@/lib/i18n";
 import SearchBar from "@/components/SearchBar";
 import SourceBadge from "@/components/SourceBadge";
 
@@ -11,6 +12,7 @@ export default function SearchPage() {
   const [hasSearched, setHasSearched] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { t, locale } = useI18n();
 
   const handleSearch = async (query: string) => {
     setLoading(true);
@@ -21,7 +23,7 @@ export default function SearchPage() {
       const data = await searchItems(query);
       setResults(data.items);
     } catch {
-      setError("Search failed. Is the backend running?");
+      setError(t("searchFailed"));
       setResults([]);
     } finally {
       setLoading(false);
@@ -33,7 +35,7 @@ export default function SearchPage() {
       <SearchBar onSearch={handleSearch} />
 
       {loading && (
-        <p className="text-ink-faint text-sm text-center py-8">Searching...</p>
+        <p className="text-ink-faint text-sm text-center py-8">{t("searching")}</p>
       )}
 
       {error && (
@@ -42,7 +44,7 @@ export default function SearchPage() {
 
       {hasSearched && !loading && !error && results.length === 0 && (
         <p className="text-ink-faint text-sm text-center py-8">
-          No results found.
+          {t("searchNoResults")}
         </p>
       )}
 
@@ -63,7 +65,7 @@ export default function SearchPage() {
               </div>
               {item.summary && (
                 <p className="text-sm text-ink-light ml-8 leading-relaxed">
-                  {item.summary}
+                  {locale === "vi" && item.summary_vi ? item.summary_vi : item.summary}
                 </p>
               )}
             </li>

@@ -3,38 +3,18 @@
 import { useEffect, useState, useCallback } from "react";
 import { listItems } from "@/lib/api";
 import type { Item } from "@/lib/types";
+import { useI18n } from "@/lib/i18n";
 import SourceBadge from "@/components/SourceBadge";
+import type { TranslationKeys } from "@/lib/i18n";
 
-const sourceFilters: { value: string; label: string }[] = [
-  { value: "", label: "All" },
-  { value: "chrome", label: "Bookmarks" },
-  { value: "youtube", label: "YouTube" },
-  { value: "x", label: "X" },
-  { value: "threads", label: "Threads" },
-  { value: "manual", label: "Manual" },
+const sourceFilters: { value: string; labelKey: TranslationKeys }[] = [
+  { value: "", labelKey: "timelineAll" },
+  { value: "chrome", labelKey: "timelineBookmarks" },
+  { value: "youtube", labelKey: "timelineYouTube" },
+  { value: "x", labelKey: "timelineX" },
+  { value: "threads", labelKey: "timelineThreads" },
+  { value: "manual", labelKey: "timelineManual" },
 ];
-
-function groupByDate(items: Item[]): Map<string, Item[]> {
-  const groups = new Map<string, Item[]>();
-  for (const item of items) {
-    const dateKey = new Date(item.created_at).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-    const existing = groups.get(dateKey) || [];
-    existing.push(item);
-    groups.set(dateKey, existing);
-  }
-  return groups;
-}
-
-function formatTime(dateStr: string): string {
-  return new Date(dateStr).toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
 
 export default function TimelinePage() {
   const [items, setItems] = useState<Item[]>([]);
@@ -42,8 +22,31 @@ export default function TimelinePage() {
   const [error, setError] = useState<string | null>(null);
   const [sourceFilter, setSourceFilter] = useState("");
   const [hasMore, setHasMore] = useState(true);
+  const { t, dateLocale } = useI18n();
 
   const PAGE_SIZE = 50;
+
+  const groupByDate = (items: Item[]): Map<string, Item[]> => {
+    const groups = new Map<string, Item[]>();
+    for (const item of items) {
+      const dateKey = new Date(item.created_at).toLocaleDateString(dateLocale, {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+      const existing = groups.get(dateKey) || [];
+      existing.push(item);
+      groups.set(dateKey, existing);
+    }
+    return groups;
+  };
+
+  const formatTime = (dateStr: string): string => {
+    return new Date(dateStr).toLocaleTimeString(dateLocale, {
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  };
 
   const fetchItems = useCallback(
     async (offset: number, append: boolean) => {
@@ -65,12 +68,12 @@ export default function TimelinePage() {
 
         setHasMore(offset + data.items.length < data.total);
       } catch {
-        setError("Failed to load items. Is the backend running?");
+        setError(t("timelineError"));
       } finally {
         setLoading(false);
       }
     },
-    [sourceFilter],
+    [sourceFilter, t],
   );
 
   useEffect(() => {
@@ -93,7 +96,7 @@ export default function TimelinePage() {
                 : "text-ink-faint hover:text-ink-light"
             }`}
           >
-            {filter.label}
+            {t(filter.labelKey)}
           </button>
         ))}
       </div>
@@ -136,18 +139,18 @@ export default function TimelinePage() {
             onClick={() => fetchItems(items.length, true)}
             className="text-sm text-ink-faint hover:text-ink-light transition-colors"
           >
-            Load more
+            {t("timelineLoadMore")}
           </button>
         </div>
       )}
 
       {loading && (
-        <p className="text-ink-faint text-sm text-center py-8">Loading...</p>
+        <p className="text-ink-faint text-sm text-center py-8">{t("loading")}</p>
       )}
 
       {!loading && items.length === 0 && !error && (
         <p className="text-ink-faint text-sm text-center py-8">
-          No items yet.
+          {t("timelineNoItems")}
         </p>
       )}
     </div>

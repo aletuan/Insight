@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Source_Serif_4, Inter, JetBrains_Mono } from "next/font/google";
 import Nav from "@/components/Nav";
+import { Providers } from "@/components/Providers";
 import "./globals.css";
 
 const sourceSerif = Source_Serif_4({
@@ -37,8 +38,10 @@ export default function RootLayout({
       className={`${sourceSerif.variable} ${inter.variable} ${jetbrainsMono.variable}`}
     >
       <body>
-        <Nav />
-        <main className="max-w-content mx-auto px-4 py-8">{children}</main>
+        <Providers>
+          <Nav />
+          <main className="max-w-content mx-auto px-4 py-8">{children}</main>
+        </Providers>
       </body>
     </html>
   );

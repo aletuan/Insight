@@ -71,7 +71,9 @@ async def test_enrich_item_success(pending_item):
         mock_fetch.return_value = "Full article text about AI and machine learning."
         mock_summarize.return_value = (
             "This article discusses AI and machine learning advances.",
+            "Bài viết này thảo luận về tiến bộ AI và học máy.",
             ["ai", "machine-learning"],
+            ["trí-tuệ-nhân-tạo", "học-máy"],
         )
         mock_embed.return_value = fake_embedding
 
@@ -80,7 +82,9 @@ async def test_enrich_item_success(pending_item):
     item = await _get_item(pending_item.id)
     assert item.status == ItemStatus.enriched
     assert item.summary == "This article discusses AI and machine learning advances."
+    assert item.summary_vi == "Bài viết này thảo luận về tiến bộ AI và học máy."
     assert item.tags == ["ai", "machine-learning"]
+    assert item.tags_vi == ["trí-tuệ-nhân-tạo", "học-máy"]
     assert item.raw_content == "Full article text about AI and machine learning."
     assert item.embedding is not None
     assert item.processed_at is not None
@@ -99,7 +103,9 @@ async def test_enrich_item_content_fetch_fails_still_enriches(pending_item):
         mock_fetch.return_value = None  # Content extraction failed
         mock_summarize.return_value = (
             "An article about AI based on its title.",
+            "Một bài viết về AI.",
             ["ai"],
+            ["trí-tuệ-nhân-tạo"],
         )
         mock_embed.return_value = fake_embedding
 
@@ -138,7 +144,7 @@ async def test_enrich_item_embedding_fails_marks_failed(pending_item):
         mock_fetch.return_value = "Some content"
         # First call to _retry_async (summarize) succeeds, second (embed) fails
         mock_retry.side_effect = [
-            ("A summary.", ["tag"]),
+            ("A summary.", "Tóm tắt.", ["tag"], ["thẻ"]),
             None,
         ]
 
@@ -167,7 +173,7 @@ async def test_enrich_item_sets_status_to_enriching_during_processing(pending_it
         patch("app.services.worker.summarize_content", new_callable=AsyncMock) as mock_summarize,
         patch("app.services.worker.generate_embedding", new_callable=AsyncMock) as mock_embed,
     ):
-        mock_summarize.return_value = ("Summary.", ["tag"])
+        mock_summarize.return_value = ("Summary.", "Tóm tắt.", ["tag"], ["thẻ"])
         mock_embed.return_value = [0.1] * 1536
 
         await enrich_item(pending_item.id, TEST_DATABASE_URL)

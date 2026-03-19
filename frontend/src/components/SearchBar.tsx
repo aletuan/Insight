@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { useI18n } from "@/lib/i18n";
 
 interface SearchBarProps {
   onSearch: (query: string) => void;
@@ -9,6 +10,7 @@ interface SearchBarProps {
 
 export default function SearchBar({ onSearch, initialQuery = "" }: SearchBarProps) {
   const [query, setQuery] = useState(initialQuery);
+  const { t } = useI18n();
 
   const handleSubmit = useCallback(
     (e: React.FormEvent) => {
@@ -27,7 +29,7 @@ export default function SearchBar({ onSearch, initialQuery = "" }: SearchBarProp
         type="text"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search your knowledge..."
+        placeholder={t("searchPlaceholder")}
         className="input-underline"
         autoFocus
       />

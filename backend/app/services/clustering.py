@@ -57,10 +57,12 @@ def find_best_k(embeddings: np.ndarray, k_min: int = K_MIN, k_max: int = K_MAX) 
     return best_k
 
 
-async def generate_cluster_labels(cluster_titles: list[list[str]]) -> list[str]:
+async def generate_cluster_labels(cluster_titles: list[list[str]]) -> list[dict]:
     """
-    Use Haiku to generate a short descriptive label for each cluster
+    Use Haiku to generate bilingual (EN/VI) short descriptive labels for each cluster
     based on the titles of items in that cluster.
+
+    Returns list of {"en": "...", "vi": "..."} dicts.
     """
     cluster_descriptions = []
     for i, titles in enumerate(cluster_titles):
@@ -68,14 +70,15 @@ async def generate_cluster_labels(cluster_titles: list[list[str]]) -> list[str]:
 
     prompt = (
         "Given these clusters of saved content, generate a short descriptive label "
-        "(2-5 words) for each cluster. Return a JSON array of strings, one label per cluster.\n\n"
+        "(2-5 words) for each cluster in both English and Vietnamese. "
+        'Return a JSON array of objects, each with "en" and "vi" keys.\n\n'
         + "\n".join(cluster_descriptions)
-        + "\n\nReturn ONLY a JSON array of strings, no other text."
+        + '\n\nReturn ONLY a JSON array of objects like [{"en": "...", "vi": "..."}], no other text.'
     )
 
     response = await anthropic_client.messages.create(
         model="claude-haiku-4-5-20251001",
-        max_tokens=256,
+        max_tokens=512,
         messages=[{"role": "user", "content": prompt}],
     )
 
@@ -153,8 +156,16 @@ async def run_clustering(
 
         # Insert new clusters and assign items
         for i in range(best_k):
+            label_data = cluster_labels[i] if i < len(cluster_labels) else None
+            if isinstance(label_data, dict):
+                label_en = label_data.get("en", f"Cluster {i + 1}")
+                label_vi = label_data.get("vi", "")
+            else:
+                label_en = label_data or f"Cluster {i + 1}"
+                label_vi = None
             cluster = Cluster(
-                label=cluster_labels[i] if i < len(cluster_labels) else f"Cluster {i + 1}",
+                label=label_en,
+                label_vi=label_vi,
                 centroid=centroids[i].tolist(),
                 item_count=len(cluster_item_ids[i]),
             )
@@ -175,5 +186,8 @@ async def run_clustering(
         return {
             "cluster_count": best_k,
             "item_count": len(items),
-            "labels": cluster_labels[:best_k],
+            "labels": [
+                (cl.get("en", "") if isinstance(cl, dict) else cl)
+                for cl in cluster_labels[:best_k]
+            ],
         }

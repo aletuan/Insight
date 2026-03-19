@@ -97,9 +97,9 @@ def test_find_best_k_min_with_few_items():
 
 @pytest.mark.asyncio
 async def test_generate_cluster_labels():
-    """Test that Haiku is called to generate labels and returns strings."""
+    """Test that Haiku is called to generate bilingual labels."""
     mock_response = AsyncMock()
-    mock_response.content = [AsyncMock(text='["AI & Machine Learning", "DevOps & Cloud", "Frontend Web Dev"]')]
+    mock_response.content = [AsyncMock(text='[{"en": "AI & Machine Learning", "vi": "AI & Học máy"}, {"en": "DevOps & Cloud", "vi": "DevOps & Đám mây"}, {"en": "Frontend Web Dev", "vi": "Phát triển Web Frontend"}]')]
 
     with patch("app.services.clustering.anthropic_client") as mock_client:
         mock_client.messages.create = AsyncMock(return_value=mock_response)
@@ -111,7 +111,8 @@ async def test_generate_cluster_labels():
             ]
         )
     assert len(labels) == 3
-    assert all(isinstance(label, str) for label in labels)
+    assert all(isinstance(label, dict) for label in labels)
+    assert all("en" in label and "vi" in label for label in labels)
 
 
 @pytest.mark.asyncio
@@ -145,7 +146,7 @@ async def test_run_clustering_creates_clusters(enriched_items):
     from tests.conftest import TestSession
 
     mock_response = AsyncMock()
-    mock_response.content = [AsyncMock(text='["AI & ML", "DevOps", "Frontend"]')]
+    mock_response.content = [AsyncMock(text='[{"en": "AI & ML", "vi": "AI & Học máy"}, {"en": "DevOps", "vi": "DevOps"}, {"en": "Frontend", "vi": "Frontend"}]')]
 
     with patch("app.services.clustering.anthropic_client") as mock_client:
         mock_client.messages.create = AsyncMock(return_value=mock_response)
@@ -175,7 +176,7 @@ async def test_run_clustering_replaces_previous_clusters(enriched_items):
     from tests.conftest import TestSession
 
     mock_response = AsyncMock()
-    mock_response.content = [AsyncMock(text='["AI & ML", "DevOps", "Frontend"]')]
+    mock_response.content = [AsyncMock(text='[{"en": "AI & ML", "vi": "AI & Học máy"}, {"en": "DevOps", "vi": "DevOps"}, {"en": "Frontend", "vi": "Frontend"}]')]
 
     with patch("app.services.clustering.anthropic_client") as mock_client:
         mock_client.messages.create = AsyncMock(return_value=mock_response)
@@ -186,7 +187,7 @@ async def test_run_clustering_replaces_previous_clusters(enriched_items):
 
         # Run again
         mock_response2 = AsyncMock()
-        mock_response2.content = [AsyncMock(text='["Cluster A", "Cluster B", "Cluster C"]')]
+        mock_response2.content = [AsyncMock(text='[{"en": "Cluster A", "vi": "Cụm A"}, {"en": "Cluster B", "vi": "Cụm B"}, {"en": "Cluster C", "vi": "Cụm C"}]')]
         mock_client.messages.create = AsyncMock(return_value=mock_response2)
         await run_clustering(session_factory=TestSession)
 

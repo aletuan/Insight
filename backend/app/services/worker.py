@@ -85,7 +85,7 @@ async def enrich_item(item_id: UUID, database_url: str | None = None):
                 await session.commit()
             return
 
-        summary, tags = summarize_result
+        summary, summary_vi, tags, tags_vi = summarize_result
 
         # Step 4: Generate embedding (with retries)
         embed_text = f"{title} {summary}"
@@ -108,7 +108,9 @@ async def enrich_item(item_id: UUID, database_url: str | None = None):
                 .values(
                     raw_content=content,
                     summary=summary,
+                    summary_vi=summary_vi,
                     tags=tags,
+                    tags_vi=tags_vi,
                     embedding=embedding,
                     status=ItemStatus.enriched,
                     processed_at=datetime.now(timezone.utc),

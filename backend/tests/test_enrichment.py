@@ -26,8 +26,10 @@ class MockAnthropicMessage:
 @pytest.mark.asyncio
 async def test_summarize_content_returns_summary_and_tags():
     mock_response = MockAnthropicMessage(json.dumps({
-        "summary": "Vector databases store high-dimensional vectors for efficient similarity search. They power semantic search and AI applications by finding nearest neighbors in embedding space. This approach understands meaning rather than relying on exact keyword matches.",
-        "tags": ["vector-databases", "semantic-search", "embeddings", "AI"]
+        "summary_en": "Vector databases store high-dimensional vectors for efficient similarity search. They power semantic search and AI applications by finding nearest neighbors in embedding space. This approach understands meaning rather than relying on exact keyword matches.",
+        "summary_vi": "Cơ sở dữ liệu vector lưu trữ các vector đa chiều để tìm kiếm tương tự hiệu quả.",
+        "tags_en": ["vector-databases", "semantic-search", "embeddings", "AI"],
+        "tags_vi": ["cơ-sở-dữ-liệu-vector", "tìm-kiếm-ngữ-nghĩa"]
     }))
 
     mock_client = AsyncMock()
@@ -37,17 +39,21 @@ async def test_summarize_content_returns_summary_and_tags():
         result = await summarize_content("Test Article", SAMPLE_TEXT)
 
     assert result is not None
-    summary, tags = result
-    assert len(summary) > 20
-    assert isinstance(tags, list)
-    assert len(tags) >= 1
+    summary_en, summary_vi, tags_en, tags_vi = result
+    assert len(summary_en) > 20
+    assert len(summary_vi) > 10
+    assert isinstance(tags_en, list)
+    assert len(tags_en) >= 1
+    assert isinstance(tags_vi, list)
 
 
 @pytest.mark.asyncio
 async def test_summarize_content_title_only_when_no_content():
     mock_response = MockAnthropicMessage(json.dumps({
-        "summary": "An article about vector databases and their applications.",
-        "tags": ["vector-databases"]
+        "summary_en": "An article about vector databases and their applications.",
+        "summary_vi": "Một bài viết về cơ sở dữ liệu vector.",
+        "tags_en": ["vector-databases"],
+        "tags_vi": ["cơ-sở-dữ-liệu-vector"]
     }))
 
     mock_client = AsyncMock()
@@ -57,8 +63,8 @@ async def test_summarize_content_title_only_when_no_content():
         result = await summarize_content("Understanding Vector Databases", None)
 
     assert result is not None
-    summary, tags = result
-    assert len(summary) > 10
+    summary_en, summary_vi, tags_en, tags_vi = result
+    assert len(summary_en) > 10
 
 
 @pytest.mark.asyncio
